@@ -73,6 +73,10 @@ func (s *Service) Start() {
 	}
 }
 
+func (s *Service) ServiceAddr() string {
+	return s.listener.Addr().String()
+}
+
 func (s *Service) registerService() {
 	var err error
 
