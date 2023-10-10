@@ -108,8 +108,8 @@ func (s *Service) ListenAndServe(handler http.Handler) {
 		if err := http.ListenAndServe(addr, handler); err != nil {
 			log.Fatalf("Could not start server on address '%s': %v", addr, err)
 		}
-		log.Printf("Service '%s' is now running on: %s ...\n", s.name, addr)
 	}()
+	log.Printf("Service '%s' is now running on: %s ...\n", s.name, addr)
 }
 
 func unblock(h func() error) error {
