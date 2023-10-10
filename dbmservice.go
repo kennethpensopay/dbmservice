@@ -19,6 +19,7 @@ type Service struct {
 	name           string
 	port           int
 	tags           []string
+	listener       net.Listener
 	consulClient   *consul.Client
 	consulConfig   *consul.Config
 	healthCheckTTL time.Duration
@@ -38,6 +39,7 @@ func NewService() *Service {
 		name:           serviceName,
 		port:           getServicePort(),
 		tags:           getServiceTags(),
+		listener:       nil,
 		consulClient:   consulClient,
 		consulConfig:   consulCfg,
 		healthCheckTTL: getHealthCheckTTL(),
@@ -62,14 +64,11 @@ func (s *Service) RegisterService() {
 	if err != nil {
 		log.Fatalf("Could not listen to server: %v", err)
 	}
+	s.listener = ln
 
 	var servicePortStr string
-	if svcReg.Address, servicePortStr, err = net.SplitHostPort(ln.Addr().String()); err != nil || svcReg.Address == "" || servicePortStr == "" {
+	if svcReg.Address, servicePortStr, err = net.SplitHostPort(s.listener.Addr().String()); err != nil || svcReg.Address == "" || servicePortStr == "" {
 		log.Fatalln("Could not resolve Service Address and Service Port.")
-	}
-
-	if err = ln.Close(); err != nil {
-		log.Fatalf("Could not close listener: %v", err)
 	}
 
 	if svcReg.Port, err = strconv.Atoi(strings.TrimSpace(servicePortStr)); err != nil {
@@ -104,24 +103,9 @@ func (s *Service) RegisterService() {
 
 func (s *Service) ListenAndServe(handler http.Handler) {
 	addr := s.getAddr()
-	go func() {
-		if err := http.ListenAndServe(addr, handler); err != nil {
-			log.Fatalf("Could not start server on address '%s': %v", addr, err)
-		}
-	}()
 	log.Printf("Service '%s' is now running on: %s ...\n", s.name, addr)
-}
-
-func unblock(h func() error) error {
-	w := make(chan error)
-	go func() {
-		w <- h()
-	}()
-	select {
-	case err := <-w:
-		return err
-	case <-time.After(time.Millisecond * 50):
-		return nil
+	if err := http.Serve(s.listener, handler); err != nil {
+		log.Fatalf("Could not start server on address '%s': %v", addr, err)
 	}
 }
 
