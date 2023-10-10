@@ -104,16 +104,12 @@ func (s *Service) RegisterService() {
 
 func (s *Service) ListenAndServe(handler http.Handler) {
 	addr := s.getAddr()
-	if err := unblock(func() error {
+	go func() {
 		if err := http.ListenAndServe(addr, handler); err != nil {
-			return err
+			log.Fatalf("Could not start server on address '%s': %v", addr, err)
 		}
-		return nil
-	}); err != nil {
-		log.Fatalf("Could not start server on address '%s': %v", addr, err)
-	}
-
-	log.Printf("Service '%s' is now running on: %s ...\n", s.name, addr)
+		log.Printf("Service '%s' is now running on: %s ...\n", s.name, addr)
+	}()
 }
 
 func unblock(h func() error) error {
