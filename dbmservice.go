@@ -8,6 +8,7 @@ import (
 	debug "github.com/kennethpensopay/go-debug"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -45,16 +46,12 @@ func NewService() *Service {
 
 // StartService This function is deprecated. Will be removed in future version.
 //
-// Deprecated: As of v1.1.0, this function simply calls [Start()].
+// Deprecated: As of v1.1.0, this function simply calls [RegisterService()].
 func (s *Service) StartService() {
-	s.Start()
+	s.RegisterService()
 }
 
-func (s *Service) ServiceAddr() string {
-	return fmt.Sprintf("%s:%d", getServiceAddress(), s.port)
-}
-
-func (s *Service) Start() {
+func (s *Service) RegisterService() {
 	var err error
 
 	svcReg := &consul.AgentServiceRegistration{
@@ -107,11 +104,15 @@ func (s *Service) Start() {
 
 	debug.Debugf("Service '%s' was registered with address/port '%s' to Consul instance: %s",
 		s.name,
-		s.ServiceAddr(),
+		s.serviceAddr(),
 		fmt.Sprintf("%s://%s", s.consulConfig.Scheme, s.consulConfig.Address),
 	)
 
 	log.Printf("Service '%s' is now running on port %d ...\n", s.name, s.port)
+}
+
+func (s *Service) ListenAndServe(handler http.Handler) {
+	log.Fatalln(http.ListenAndServe(s.serviceAddr(), handler))
 }
 
 func (s *Service) enablePlanWatch(serviceID string) {
@@ -211,6 +212,10 @@ func getServiceAddress() string {
 		debug.Debug("Service Address not defined. Set to 'localhost'.")
 	}
 	return serviceAddress
+}
+
+func (s *Service) serviceAddr() string {
+	return fmt.Sprintf("%s:%d", getServiceAddress(), s.port)
 }
 
 func getHealthCheckTTL() time.Duration {
