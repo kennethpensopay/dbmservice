@@ -46,7 +46,8 @@ func NewService() *Service {
 }
 
 // StartService This function is deprecated. Will be removed in future version.
-// Use Start() instead.
+//
+// Deprecated: As of v1.1.0, this function simply calls [Start()].
 func (s *Service) StartService() {
 	s.Start()
 }
