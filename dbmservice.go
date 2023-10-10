@@ -5,7 +5,7 @@ import (
 	consul "github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/api/watch"
 	"github.com/kennethpensopay/dbmservice/internal/modinfo"
-	debug "github.com/kennethpensopay/dbmservice/pkg/dbmdebug"
+	debug "github.com/kennethpensopay/go-debug"
 	"log"
 	"net"
 	"os"

@@ -4,6 +4,7 @@ go 1.21.0
 
 require (
 	github.com/hashicorp/consul/api v1.25.1
+	github.com/kennethpensopay/go-debug v1.0.0
 	golang.org/x/mod v0.13.0
 )
 
