@@ -44,13 +44,6 @@ func NewService() *Service {
 	}
 }
 
-// StartService This function is deprecated. Will be removed in future version.
-//
-// Deprecated: As of v1.1.0, this function simply calls [RegisterService()].
-func (s *Service) StartService() {
-	s.RegisterService()
-}
-
 func (s *Service) RegisterService() {
 	var err error
 
@@ -104,15 +97,17 @@ func (s *Service) RegisterService() {
 
 	debug.Debugf("Service '%s' was registered with address/port '%s' to Consul instance: %s",
 		s.name,
-		s.serviceAddr(),
+		s.getAddr(),
 		fmt.Sprintf("%s://%s", s.consulConfig.Scheme, s.consulConfig.Address),
 	)
-
-	log.Printf("Service '%s' is now running on port %d ...\n", s.name, s.port)
 }
 
 func (s *Service) ListenAndServe(handler http.Handler) {
-	log.Fatalln(http.ListenAndServe(s.serviceAddr(), handler))
+	addr := s.getAddr()
+	if err := http.ListenAndServe(addr, handler); err != nil {
+		log.Fatalf("Could not start server on address '%s': %v", addr, err)
+	}
+	log.Printf("Service '%s' is now running on: %s ...\n", s.name, addr)
 }
 
 func (s *Service) enablePlanWatch(serviceID string) {
@@ -147,9 +142,9 @@ func (s *Service) enablePlanWatch(serviceID string) {
 
 func (s *Service) updateHealthCheck() {
 	checkId := s.serviceID() + "_health"
-
-	debug.Debugf("Health Check Enabled with ticker duration set to %s, and CheckID set to '%s'.", (s.healthCheckTTL / 2).String(), checkId)
-	ticker := time.NewTicker(s.healthCheckTTL / 2)
+	ttl := s.healthCheckTTL / 2
+	debug.Debugf("Health Check Enabled with ticker duration set to %s, and CheckID set to '%s'.", ttl.String(), checkId)
+	ticker := time.NewTicker(ttl)
 	for {
 		debug.Debugf("Health Check status updated at %s.", time.Now().Format(time.DateTime))
 		if err := s.consulClient.Agent().UpdateTTL(checkId, "healthy", consul.HealthPassing); err != nil {
@@ -206,15 +201,14 @@ func getServiceTags() []string {
 }
 
 func getServiceAddress() string {
-	serviceAddress := strings.TrimSpace(os.Getenv("SERVICE_ADDRESS"))
-	if serviceAddress == "" {
-		serviceAddress = "localhost"
-		debug.Debug("Service Address not defined. Set to 'localhost'.")
+	if serviceAddress := strings.TrimSpace(os.Getenv("SERVICE_ADDRESS")); serviceAddress != "" {
+		return serviceAddress
 	}
-	return serviceAddress
+	debug.Debug("Service Address not defined. Set to 'localhost'.")
+	return "localhost"
 }
 
-func (s *Service) serviceAddr() string {
+func (s *Service) getAddr() string {
 	return fmt.Sprintf("%s:%d", getServiceAddress(), s.port)
 }
 
