@@ -45,7 +45,13 @@ func NewService() *Service {
 	}
 }
 
+// StartService This function is deprecated. Will be removed in future version.
+// Use Start() instead.
 func (s *Service) StartService() {
+	s.Start()
+}
+
+func (s *Service) Start() {
 	serviceAddress := strings.TrimSpace(os.Getenv("SERVICE_ADDRESS"))
 	if serviceAddress == "" {
 		serviceAddress = "localhost"
@@ -90,7 +96,7 @@ func (s *Service) registerService() {
 	}
 	s.port = svcReg.Port
 
-	svcReg.ID = s.ServiceID()
+	svcReg.ID = s.serviceID()
 	svcReg.Check.CheckID = svcReg.ID + "_health"
 
 	debug.Debugf("Service configured to register on address %s:%d, with ID '%s' and Health check CheckID '%s'",
@@ -147,7 +153,7 @@ func (s *Service) enablePlanWatch(serviceID string) {
 }
 
 func (s *Service) updateHealthCheck() {
-	checkId := s.ServiceID() + "_health"
+	checkId := s.serviceID() + "_health"
 
 	debug.Debugf("Health Check Enabled with ticker duration set to %s, and CheckID set to '%s'.", (s.healthCheckTTL / 2).String(), checkId)
 	ticker := time.NewTicker(s.healthCheckTTL / 2)
@@ -160,7 +166,7 @@ func (s *Service) updateHealthCheck() {
 	}
 }
 
-func (s *Service) ServiceID() string {
+func (s *Service) serviceID() string {
 	return fmt.Sprintf("%s-%d", strings.ReplaceAll(s.name, ".", "-"), s.port)
 }
 
