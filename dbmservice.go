@@ -18,7 +18,6 @@ type Service struct {
 	name           string
 	port           int
 	tags           []string
-	listener       net.Listener
 	consulClient   *consul.Client
 	consulConfig   *consul.Config
 	healthCheckTTL time.Duration
@@ -38,7 +37,6 @@ func NewService() *Service {
 		name:           serviceName,
 		port:           getServicePort(),
 		tags:           getServiceTags(),
-		listener:       nil,
 		consulClient:   consulClient,
 		consulConfig:   consulCfg,
 		healthCheckTTL: getHealthCheckTTL(),
@@ -52,32 +50,11 @@ func (s *Service) StartService() {
 	s.Start()
 }
 
-func (s *Service) Start() {
-	serviceAddress := strings.TrimSpace(os.Getenv("SERVICE_ADDRESS"))
-	if serviceAddress == "" {
-		serviceAddress = "localhost"
-		debug.Debug("Service Address not defined. Set to 'localhost'.")
-	}
-
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", serviceAddress, s.port))
-	if err != nil {
-		log.Fatalf("Could not listen to server: %v", err)
-	}
-	s.listener = ln
-	s.registerService()
-
-	for {
-		if _, lnaErr := s.listener.Accept(); lnaErr != nil {
-			log.Fatalf("Service Listener could not accept next connection: %v", lnaErr)
-		}
-	}
-}
-
 func (s *Service) ServiceAddr() string {
-	return s.listener.Addr().String()
+	return fmt.Sprintf("%s://%s:%d", "http", getServiceAddress(), s.port)
 }
 
-func (s *Service) registerService() {
+func (s *Service) Start() {
 	var err error
 
 	svcReg := &consul.AgentServiceRegistration{
@@ -91,9 +68,18 @@ func (s *Service) registerService() {
 		},
 	}
 
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", getServiceAddress(), s.port))
+	if err != nil {
+		log.Fatalf("Could not listen to server: %v", err)
+	}
+
 	var servicePortStr string
-	if svcReg.Address, servicePortStr, err = net.SplitHostPort(s.listener.Addr().String()); err != nil || svcReg.Address == "" || servicePortStr == "" {
+	if svcReg.Address, servicePortStr, err = net.SplitHostPort(ln.Addr().String()); err != nil || svcReg.Address == "" || servicePortStr == "" {
 		log.Fatalln("Could not resolve Service Address and Service Port.")
+	}
+
+	if err = ln.Close(); err != nil {
+		log.Fatalf("Could not close listener: %v", err)
 	}
 
 	if svcReg.Port, err = strconv.Atoi(strings.TrimSpace(servicePortStr)); err != nil {
@@ -121,9 +107,10 @@ func (s *Service) registerService() {
 
 	debug.Debugf("Service '%s' was registered with address/port '%s' to Consul instance: %s",
 		s.name,
-		s.listener.Addr().String(),
+		s.ServiceAddr(),
 		fmt.Sprintf("%s://%s", s.consulConfig.Scheme, s.consulConfig.Address),
 	)
+
 	log.Printf("Service '%s' is now running on port %d ...\n", s.name, s.port)
 }
 
@@ -215,6 +202,15 @@ func getServiceTags() []string {
 		}
 	}
 	return []string{"go", "service"}
+}
+
+func getServiceAddress() string {
+	serviceAddress := strings.TrimSpace(os.Getenv("SERVICE_ADDRESS"))
+	if serviceAddress == "" {
+		serviceAddress = "localhost"
+		debug.Debug("Service Address not defined. Set to 'localhost'.")
+	}
+	return serviceAddress
 }
 
 func getHealthCheckTTL() time.Duration {
