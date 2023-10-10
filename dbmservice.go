@@ -51,7 +51,7 @@ func (s *Service) StartService() {
 }
 
 func (s *Service) ServiceAddr() string {
-	return fmt.Sprintf("%s://%s:%d", "http", getServiceAddress(), s.port)
+	return fmt.Sprintf("%s:%d", getServiceAddress(), s.port)
 }
 
 func (s *Service) Start() {
