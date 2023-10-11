@@ -4,7 +4,9 @@ go 1.21.0
 
 require (
 	github.com/hashicorp/consul/api v1.25.1
-	github.com/kennethpensopay/go-debug v1.0.0
+	github.com/joho/godotenv v1.5.1
+	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/kennethpensopay/go-debug v1.3.0
 	golang.org/x/mod v0.13.0
 )
 
